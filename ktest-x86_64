@@ -1,0 +1,4 @@
+ARCH=x86_64 \
+    QEMU_OPT="-enable-kvm" \
+    QEMU_APPEND="root=/dev/ram0 console=ttyS0" \
+    $(dirname $0)/ktest $@

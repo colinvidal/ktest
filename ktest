@@ -1,0 +1,95 @@
+#!/bin/bash
+
+if [ "$ARCH" == "" ]; then
+    echo "Missing ARCH variable"
+    exit 1
+fi
+
+if [ "$ARCH" == "" ]; then
+    echo "Missing QEMU_OPT variable"
+    exit 1
+fi
+
+if [ "$ARCH" == "" ]; then
+    echo "Missing QEMU_APPEND variable"
+    exit 1
+fi
+
+CURDIR=$(pwd)
+SCRIPTDIR=$(dirname $0)
+TMPDIR=/tmp/rootfs-$ARCH-build
+
+start_qemu() {
+    qemu-system-$ARCH \
+	$QEMU_OPT \
+	-kernel $kernel \
+	-initrd $initrd \
+	-append ''"$QEMU_APPEND"' '"$append"'' \
+	-nographic
+}
+
+while [[ $# > 1 ]]; do
+    key="$1"
+    case $key in
+	-k|--kernel)
+	    kernel=$2
+	    shift
+	    ;;
+	-a|--append)
+	    append=$2
+	    shift
+	    ;;
+	-i|--include)
+	    include=$2
+	    shift
+	    ;;
+	-d|--include-dir)
+	    include_dir=$2
+	    shift
+	    ;;
+	*)
+	    shift
+	    ;;
+    esac
+    shift
+done
+
+if [ "$kernel" == "" ]; then
+    echo "Usage: -k|--kernel <kernel image>"
+    echo "      [-a|--append <kernel command line options>]"
+    echo "      [-i|--include <file to include in initramfs>]"
+    echo "      [-d|--include-dir <dir to include in initramfs>]"
+    exit 1
+fi
+
+if [[ "$include" != "" || "$include_dir" != "" ]]; then
+    mkdir $TMPDIR || exit 1
+    cp $SCRIPTDIR/rootfs-$ARCH.cpio $TMPDIR
+    initrd=$TMPDIR/rootfs-$ARCH.cpio
+
+    if [ "$include" != "" ]; then
+	cp $CURDIR/$include $TMPDIR
+	cd $TMPDIR
+	echo $(pwd)
+	echo $(basename $include)
+	echo $(basename $include) |cpio -ov --format=newc --append -F $initrd
+	cd $CURDIR
+    fi
+
+    if [ "$include_dir" != "" ]; then
+    	cp -r $CURDIR/$include_dir $TMPDIR
+	cd $TMPDIR
+    	find $(basename $include_dir) |cpio -ov --format=newc --append \
+					    -F $initrd
+	cd $CURDIR
+    fi
+    
+    start_qemu
+    rm -rf $TMPDIR
+else
+    initrd=$SCRIPTDIR/rootfs-$ARCH.cpio
+    start_qemu
+fi
+
+exit 0
+

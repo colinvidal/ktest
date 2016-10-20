@@ -1,0 +1,4 @@
+ARCH=arm \
+    QEMU_OPT="-machine virt" \
+    QEMU_APPEND="root=/dev/ram0" \
+    $(dirname $0)/ktest $@
